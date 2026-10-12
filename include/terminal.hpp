@@ -10,6 +10,25 @@ struct TerminalSize {
     int cols{80};
 };
 
+enum class Key {
+    None,
+    Up,
+    Down,
+    Left,
+    Right,
+    PageUp,
+    PageDown,
+    Home,
+    End,
+    Char,
+    Quit
+};
+
+struct KeyEvent {
+    Key key{Key::None};
+    char ch{0};
+};
+
 class Terminal {
 public:
     Terminal();
@@ -19,11 +38,18 @@ public:
     Terminal(const Terminal&) = delete;
     Terminal& operator=(const Terminal&) = delete;
 
-    // Non-blocking single-character read (returns std::nullopt if no key was pressed)
+    // Non-blocking key event reader (handles arrow keys, escape sequences, etc.)
+    KeyEvent poll_event();
+
+    // Non-blocking single-character read (legacy helper)
     std::optional<char> poll_key();
 
     // Queries current terminal dimensions (columns and rows)
     TerminalSize get_size() const;
+
+    // Checks if a SIGWINCH resize signal was received and clears the flag
+    bool check_and_clear_resized();
+    int exit_requested() const;
 
     // Clears the screen and positions cursor at (1, 1)
     void clear_screen() const;

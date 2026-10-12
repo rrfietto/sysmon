@@ -28,6 +28,7 @@ public:
 private:
     struct PrevProcState {
         uint64_t total_time{0}; // utime + stime
+        uint64_t starttime{0};  // Process identity: stat field 22
     };
 
     std::unordered_map<int, PrevProcState> prev_proc_ticks_;

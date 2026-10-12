@@ -10,10 +10,13 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-src/%.o: src/%.cpp
+src/%.o: src/%.cpp $(wildcard include/*.hpp)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -f src/*.o $(TARGET)
 
-.PHONY: all clean
+test: $(TARGET)
+	python3 -m unittest discover -s tests -v
+
+.PHONY: all clean test

@@ -74,14 +74,14 @@ std::vector<ProcessInfo> ProcessTracker::sample() {
 
     const auto &entry = *dir_it;
     std::string filename = entry.path().filename().string();
-    if (filename.empty() || !std::isdigit(filename[0])) {
+    if (filename.empty() || !std::isdigit(static_cast<unsigned char>(filename[0]))) {
       continue;
     }
 
     // Verify PID folder name is entirely numeric
     bool is_pid = true;
     for (char c : filename) {
-      if (!std::isdigit(c)) {
+      if (!std::isdigit(static_cast<unsigned char>(c))) {
         is_pid = false;
         break;
       }
@@ -142,8 +142,8 @@ std::vector<ProcessInfo> ProcessTracker::sample() {
     if (!(iss >> proc.utime >> proc.stime))
       continue;
 
-    // Skip fields 16 through 23
-    for (int i = 16; i <= 23; ++i) {
+    // Skip fields 16 through 21
+    for (int i = 16; i <= 21; ++i) {
       if (!(iss >> dummy)) {
         skip_ok = false;
         break;
@@ -152,9 +152,19 @@ std::vector<ProcessInfo> ProcessTracker::sample() {
     if (!skip_ok)
       continue;
 
-    // Field 24: rss in pages
+    // Field 22: starttime, field 23: vsize
+    uint64_t starttime = 0;
+    if (!(iss >> starttime >> dummy))
+      continue;
+
+    // Field 24: rss in pages; require a complete, nonnegative numeric token.
+    if (!(iss >> dummy))
+      continue;
+    std::istringstream rss_stream(dummy);
     int64_t rss_pages = 0;
-    if (iss >> rss_pages && rss_pages > 0) {
+    if (!(rss_stream >> rss_pages) || !rss_stream.eof() || rss_pages < 0)
+      continue;
+    if (rss_pages > 0) {
       proc.rss_kb = static_cast<uint64_t>(rss_pages) * page_size_kb_;
     }
 
@@ -167,11 +177,12 @@ std::vector<ProcessInfo> ProcessTracker::sample() {
 
     // Calculate CPU %
     uint64_t curr_proc_ticks = proc.utime + proc.stime;
-    next_proc_ticks[pid] = {curr_proc_ticks};
+    next_proc_ticks[pid] = {curr_proc_ticks, starttime};
 
     if (initialized_ && delta_system_ticks > 0) {
       auto prev_it = prev_proc_ticks_.find(pid);
       if (prev_it != prev_proc_ticks_.end() &&
+          starttime == prev_it->second.starttime &&
           curr_proc_ticks >= prev_it->second.total_time) {
         uint64_t delta_proc_ticks =
             curr_proc_ticks - prev_it->second.total_time;
