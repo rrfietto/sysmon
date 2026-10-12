@@ -41,3 +41,22 @@ The dependency-free Python pseudo-terminal regression test checks single CPU and
 process headings, row/column bounds, shrinking and growing windows, the
 small-window prompt, theme cycling, navigation, and terminal restoration on
 `q`, `SIGINT`, and `SIGTERM`. It requires Python 3 and a Linux pseudo-terminal.
+
+## Performance profiling
+
+```sh
+make bench
+make bench BENCH_ARGS="--iterations 1000"
+make bench BENCH_ARGS="--stage processes --stage render --json"
+```
+
+The opt-in microbenchmark measures host, memory, CPU and process collection,
+sorting, rendering, and the complete refresh path in isolated subprocesses. It
+reports wall-clock latency percentiles, process CPU time, peak RSS, process
+count, and generated frame size. Rendering writes to an in-memory counting sink,
+so terminal emulator speed is intentionally excluded.
+
+These are diagnostic measurements, not pass/fail tests: `/proc` scanning depends
+strongly on the current process count, while timing and peak RSS depend on the
+machine, kernel, build flags, and background load. Compare results only under
+similar conditions and do not treat one run as a portable performance claim.
